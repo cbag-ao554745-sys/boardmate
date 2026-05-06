@@ -9,13 +9,13 @@ use App\Http\Requests\UpdatePaymentMethodRequest;
 class PaymentMethodController extends Controller
 {
     /**
-     * Display a listing of all payment methods.
+     * Display a listing of payment methods.
      */
     public function index()
     {
-        $paymentMethods = PaymentMethod::paginate(10);
+        $methods = PaymentMethod::paginate(10);
 
-        return view('payment-methods.index', compact('paymentMethods'));
+        return view('payment-methods.index', compact('methods'));
     }
 
     /**
@@ -31,9 +31,15 @@ class PaymentMethodController extends Controller
      */
     public function store(StorePaymentMethodRequest $request)
     {
-        PaymentMethod::create($request->validated());
+        $paymentMethod = PaymentMethod::create([
+            'name' => $request->name,
+            'description' => $request->description,
+            'is_active' => true,
+            'requires_reference' => (bool) $request->requires_reference,
+        ]);
 
-        return redirect()->route('payment-methods.index')->with('success', 'Payment method created successfully.');
+        return redirect()->route('payment-methods.index', $paymentMethod->payment_method_id)
+            ->with('success', 'Payment method created successfully.');
     }
 
     /**
@@ -57,18 +63,50 @@ class PaymentMethodController extends Controller
      */
     public function update(UpdatePaymentMethodRequest $request, PaymentMethod $paymentMethod)
     {
-        $paymentMethod->update($request->validated());
+        $paymentMethod->update([
+            'name' => $request->name,
+            'description' => $request->description,
+            'requires_reference' => (bool) $request->requires_reference,
+        ]);
 
-        return redirect()->route('payment-methods.index')->with('success', 'Payment method updated successfully.');
+        return redirect()->route('payment-methods.index', $paymentMethod->payment_method_id)
+            ->with('success', 'Payment method updated successfully.');
     }
 
     /**
-     * Deactivate the specified payment method (soft delete via is_active flag).
+     * Remove the specified payment method from storage (soft delete via deactivation).
      */
     public function destroy(PaymentMethod $paymentMethod)
     {
-        $paymentMethod->update(['is_active' => false]);
+        // Check if payment method is in use
+        $paymentRecordCount = $paymentMethod->paymentRecords()->count();
 
-        return redirect()->route('payment-methods.index')->with('success', 'Payment method deactivated successfully.');
+        if ($paymentRecordCount > 0) {
+            // Deactivate instead of deleting if in use
+            $paymentMethod->update(['is_active' => false]);
+
+            return redirect()->route('payment-methods.index')
+                ->with('success', 'Payment method deactivated (has ' . $paymentRecordCount . ' associated payment records).');
+        }
+
+        // Safe to delete if not in use
+        $paymentMethod->delete();
+
+        return redirect()->route('payment-methods.index')
+            ->with('success', 'Payment method deleted successfully.');
+    }
+
+    /**
+     * Toggle the active status of a payment method.
+     */
+    public function toggleActive(PaymentMethod $paymentMethod)
+    {
+        $paymentMethod->update(['is_active' => !$paymentMethod->is_active]);
+
+        return response()->json([
+            'success' => true,
+            'is_active' => $paymentMethod->is_active,
+            'message' => $paymentMethod->is_active ? 'Payment method activated.' : 'Payment method deactivated.',
+        ]);
     }
 }

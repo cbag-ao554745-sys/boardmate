@@ -27,7 +27,7 @@ return new class extends Migration
             $table->decimal('amount_paid', 10, 2)->default(0);
             $table->decimal('balance', 10, 2)->default(0);
 
-            $table->enum('payment_method', ['Cash', 'GCash'])->nullable();
+            $table->unsignedInteger('payment_method_id')->nullable();
             $table->string('payment_reference', 100)->nullable();
 
             $table->enum('status', ['Pending', 'Partial', 'Paid', 'Overdue'])->default('Pending');
@@ -37,6 +37,7 @@ return new class extends Migration
             $table->dateTime('date_paid')->nullable();
 
             $table->timestamps();
+            $table->softDeletes();
 
             $table->foreign('lease_id')
                 ->references('lease_id')
@@ -49,6 +50,11 @@ return new class extends Migration
                 ->on('tenant')
                 ->onUpdate('cascade')
                 ->onDelete('restrict');
+            $table->foreign('payment_method_id')
+                ->references('payment_method_id')
+                ->on('payment_methods')
+                ->onUpdate('cascade')
+                ->onDelete('set null');
         });
     }
 

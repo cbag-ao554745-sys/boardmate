@@ -24,7 +24,7 @@ class PaymentRecord extends Model
         'total_amount', 
         'amount_paid', 
         'balance', 
-        'payment_method', 
+        'payment_method_id', 
         'payment_reference', 
         'status', 
         'bills_due_date', 
@@ -63,6 +63,11 @@ class PaymentRecord extends Model
     public function tenant(): BelongsTo
     {
         return $this->belongsTo(Tenant::class, 'tenant_id', 'tenant_id');
+    }
+
+    public function paymentMethod(): BelongsTo
+    {
+        return $this->belongsTo(PaymentMethod::class, 'payment_method_id', 'payment_method_id');
     }
 
     public function notifications(): HasMany

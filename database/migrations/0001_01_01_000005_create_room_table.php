@@ -19,6 +19,7 @@ return new class extends Migration
             $table->decimal('monthly_rent', 10, 2);
             $table->enum('status', ['Available', 'Occupied', 'Under Maintenance'])->default('Available');
             $table->timestamps();
+            $table->softDeletes();
 
             $table->unique(['landlord_id', 'room_number']);
             $table->foreign('landlord_id')

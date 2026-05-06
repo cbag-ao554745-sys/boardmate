@@ -239,17 +239,17 @@
                 </ul>
             </div>
 
-            {{-- <div class="relative flex w-full min-w-0 flex-col px-2 py-0 hidden">
-                <p
+            <div class="relative flex w-full min-w-0 flex-col px-2 py-0">
+                {{-- <p
                     class="nav-section-title flex h-8 shrink-0 items-center rounded-md px-2
                           text-xs font-medium text-sidebar-foreground/70 uppercase tracking-wider">
                     Reports
-                </p>
+                </p> --}}
                 <ul class="flex w-full min-w-0 flex-col gap-1">
 
-                    @php $active = request()->routeIs('reports'); @endphp
+                    @php $active = request()->routeIs('reports.cash-flow-forecast'); @endphp
                     <li>
-                        <a href="{{ route('reports') }}"
+                        <a href="{{ route('reports.cash-flow-forecast') }}"
                             class="nav-item {{ $active ? 'is-active' : '' }} flex w-full items-center gap-2 overflow-hidden
                                    rounded-md px-2 py-1.5 text-sm outline-none ring-sidebar-ring
                                    transition-[width,height,padding] focus-visible:ring-2 h-8
@@ -264,35 +264,12 @@
                                 <path d="M13 17V5" />
                                 <path d="M8 17v-3" />
                             </svg>
-                            <span class="sidebar-label truncate">Reports</span>
-                        </a>
-                    </li>
-
-                    @php $active = request()->routeIs('audit-log'); @endphp
-                    <li>
-                        <a href="{{ route('audit-log') }}"
-                            class="nav-item {{ $active ? 'is-active' : '' }} flex w-full items-center gap-2 overflow-hidden
-                                   rounded-md px-2 py-1.5 text-sm outline-none ring-sidebar-ring
-                                   transition-[width,height,padding] focus-visible:ring-2 h-8
-                                   {{ $active
-                                       ? 'bg-sidebar-primary text-sidebar-primary-foreground font-medium'
-                                       : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground' }}">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
-                                stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                stroke-linejoin="round">
-                                <path d="M2 6h4" />
-                                <path d="M2 10h4" />
-                                <path d="M2 14h4" />
-                                <path d="M2 18h4" />
-                                <rect width="16" height="20" x="4" y="2" rx="2" />
-                                <path d="M16 2v20" />
-                            </svg>
-                            <span class="sidebar-label truncate">Audit Log</span>
+                            <span class="sidebar-label truncate">Cash Flow Forecast</span>
                         </a>
                     </li>
 
                 </ul>
-            </div> --}}
+            </div>
 
         </div>
 

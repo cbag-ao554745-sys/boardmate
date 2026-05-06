@@ -28,9 +28,6 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // Seed payment methods first (used system-wide)
-        $this->call(PaymentMethodSeeder::class);
-
         // Create test user for landlord authentication
         $user = User::firstOrCreate(
             ['email' => 'landlord@upahan.local'],
@@ -141,25 +138,84 @@ class DatabaseSeeder extends Seeder
                     'total_amount' => $totalAmount,
                     'amount_paid' => $amountPaid,
                     'balance' => max(0, $totalAmount - $amountPaid),
-                    'payment_method' => $this->faker->randomElement(['Cash', 'GCash']),
+                    'payment_method_id' => $this->faker->randomElement([1, 2]), // 1 = Cash, 2 = GCash
                     'payment_reference' => $status === 'Paid' ? $this->faker->uuid() : null,
                     'status' => $status,
                     'bills_due_date' => $dueDate,
                     'date_paid' => $status === 'Paid' ? $dueDate : null,
                 ]);
 
-                if ($status === 'Overdue') {
+                // Create notifications based on payment status
+                if ($status === 'Paid') {
                     Notification::create([
                         'payment_id' => $payment->payment_id,
                         'landlord_id' => $landlord->landlord_id,
-                        'type' => 'Overdue',
-                        'message' => 'Overdue payment',
-                        'sent_at' => now(),
+                        'type' => Notification::TYPE_PAYMENT_RECEIVED,
+                        'message' => "Payment received for {$primaryTenant->person->first_name} - ₱" . number_format($totalAmount, 2),
+                        'sent_at' => $dueDate->addDays(1),
+                        'is_read' => $this->faker->boolean(70),
+                    ]);
+                } elseif ($status === 'Partial') {
+                    Notification::create([
+                        'payment_id' => $payment->payment_id,
+                        'landlord_id' => $landlord->landlord_id,
+                        'type' => Notification::TYPE_DUE_SOON,
+                        'message' => "Partial payment received for {$primaryTenant->person->first_name} - Balance: ₱" . number_format($payment->balance, 2),
+                        'sent_at' => $dueDate->addDays(2),
                         'is_read' => false,
                     ]);
+                } elseif ($status === 'Overdue') {
+                    Notification::create([
+                        'payment_id' => $payment->payment_id,
+                        'landlord_id' => $landlord->landlord_id,
+                        'type' => Notification::TYPE_OVERDUE,
+                        'message' => "Overdue payment from {$primaryTenant->person->first_name} - Amount due: ₱" . number_format($totalAmount, 2),
+                        'sent_at' => $dueDate,
+                        'is_read' => false,
+                    ]);
+                } else {
+                    // For pending payments, create "Due Soon" notification if within 7 days
+                    if ($dueDate->diffInDays(now()) <= 7 && $dueDate->isFuture()) {
+                        Notification::create([
+                            'payment_id' => $payment->payment_id,
+                            'landlord_id' => $landlord->landlord_id,
+                            'type' => Notification::TYPE_DUE_SOON,
+                            'message' => "Payment due soon from {$primaryTenant->person->first_name} - Due on " . $dueDate->format('M d, Y'),
+                            'sent_at' => $dueDate->subDays(5),
+                            'is_read' => false,
+                        ]);
+                    }
                 }
             }
         }
+
+        // Create additional system notifications
+        Notification::create([
+            'payment_id' => null,
+            'landlord_id' => $landlord->landlord_id,
+            'type' => Notification::TYPE_SYSTEM,
+            'message' => 'Welcome! Your account has been successfully set up.',
+            'sent_at' => now()->subDays(30),
+            'is_read' => true,
+        ]);
+
+        Notification::create([
+            'payment_id' => null,
+            'landlord_id' => $landlord->landlord_id,
+            'type' => Notification::TYPE_SYSTEM,
+            'message' => 'New feature: Property Management Dashboard. Check it out!',
+            'sent_at' => now()->subDays(15),
+            'is_read' => true,
+        ]);
+
+        Notification::create([
+            'payment_id' => null,
+            'landlord_id' => $landlord->landlord_id,
+            'type' => Notification::TYPE_SYSTEM,
+            'message' => 'Tip: Use payment reminders to reduce late payments.',
+            'sent_at' => now()->subDays(7),
+            'is_read' => false,
+        ]);
 
         // Create some audit log entries
         AuditLog::create([

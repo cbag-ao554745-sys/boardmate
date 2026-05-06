@@ -6,6 +6,7 @@ use App\Models\Tenant;
 use App\Models\Person;
 use App\Http\Requests\StoreTenantRequest;
 use App\Http\Requests\UpdateTenantRequest;
+use Illuminate\Support\Facades\DB;
 
 class TenantController extends Controller
 {
@@ -112,11 +113,40 @@ class TenantController extends Controller
             ]
             : null;
 
+        // Fetch View 2: vw_tenant_delinquency_profile for risk assessment
+        $delinquencyProfile = DB::table('vw_tenant_delinquency_profile')
+            ->where('tenant_id', $tenant->tenant_id)
+            ->first();
+
+        $riskAssessment = null;
+        if ($delinquencyProfile) {
+            // Determine risk flag based on delinquency metrics
+            $riskFlag = 'Green';
+            if ($delinquencyProfile->tenant_status === 'Blacklisted') {
+                $riskFlag = 'Red';
+            } elseif ($delinquencyProfile->overdue_instances > 2 && $delinquencyProfile->days_late_worst > 30) {
+                $riskFlag = 'Red';
+            } elseif ($delinquencyProfile->overdue_instances > 0 || $delinquencyProfile->total_outstanding > 0) {
+                $riskFlag = 'Yellow';
+            }
+
+            $riskAssessment = [
+                'status_flag' => $riskFlag,
+                'total_outstanding' => (float) $delinquencyProfile->total_outstanding,
+                'overdue_instances' => $delinquencyProfile->overdue_instances,
+                'worst_late_days' => $delinquencyProfile->days_late_worst,
+                'total_leases' => $delinquencyProfile->total_lease_count,
+                'most_recent_payment' => $delinquencyProfile->most_recent_payment_date,
+            ];
+        }
+
         return view('tenants.show', [
             'tenant' => $tenant,
             'person' => $tenant->person,
             'guardian' => $tenant->guardian,
             'active_lease' => $activeLeaseData,
+            'delinquency_profile' => $delinquencyProfile,
+            'risk_assessment' => $riskAssessment,
         ]);
     }
 

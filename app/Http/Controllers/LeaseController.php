@@ -125,7 +125,7 @@ class LeaseController extends Controller
             ]);
         }
 
-        // Create initial payment record if initial_payment is provided ────
+        // Create initial payment record if initial_payment is provided
         $initialPayment = $request->initial_payment ?? 0;
         if ($initialPayment > 0 && $request->tenant_id) {
             // Calculate bills_due_date based on payment_due_day
@@ -219,6 +219,20 @@ class LeaseController extends Controller
     {
         $user = auth('landlord')->user();
         $landlord = $user->landlord;
+
+        // If attempting to terminate/complete, check for unpaid balance (Trigger 2 enforcement)
+        if (in_array($request->status, ['Completed', 'Terminated']) && $lease->status === 'Active') {
+            $unpaidBalance = PaymentRecord::where('lease_id', $lease->lease_id)
+                ->where('balance', '>', 0)
+                ->sum('balance');
+
+            if ($unpaidBalance > 0) {
+                throw ValidationException::withMessages([
+                    'status' => "Cannot terminate lease with unpaid balance of ₱" . number_format($unpaidBalance, 2) . 
+                    ". Collect all payments before terminating.",
+                ]);
+            }
+        }
 
         $lease->update([
             'end_date' => $request->end_date ?: null,

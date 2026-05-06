@@ -86,7 +86,7 @@
                             <div>
                                 <dt class="text-muted-foreground mb-1 text-xs font-medium uppercase tracking-wider">
                                     Payment Method</dt>
-                                <dd class="text-foreground text-sm">{{ $payment->payment_method ?? '—' }}</dd>
+                                <dd class="text-foreground text-sm">{{ $payment->paymentMethod?->name ?? '—' }}</dd>
                             </div>
                             @if ($payment->payment_reference)
                                 <div>

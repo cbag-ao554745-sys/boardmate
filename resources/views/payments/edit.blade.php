@@ -108,7 +108,7 @@
                                         @foreach ($paymentMethods as $method)
                                             <option value="{{ $method->name }}"
                                                 data-requires-reference="{{ $method->requires_reference ? 'true' : 'false' }}"
-                                                {{ old('payment_method', $payment->payment_method) === $method->name ? 'selected' : '' }}>
+                                                {{ old('payment_method', $payment->paymentMethod?->name) === $method->name ? 'selected' : '' }}>
                                                 {{ $method->name }}</option>
                                         @endforeach
                                     </select>

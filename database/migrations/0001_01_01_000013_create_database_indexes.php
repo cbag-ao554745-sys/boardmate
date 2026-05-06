@@ -3,7 +3,6 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
@@ -77,21 +76,18 @@ return new class extends Migration
      */
     public function down(): void
     {
-        // Drop indexes from room table
         Schema::table('room', function (Blueprint $table) {
             if ($this->indexExists('room', 'idx_room_status')) {
                 $table->dropIndex('idx_room_status');
             }
         });
 
-        // Drop indexes from tenant table
         Schema::table('tenant', function (Blueprint $table) {
             if ($this->indexExists('tenant', 'idx_tenant_status')) {
                 $table->dropIndex('idx_tenant_status');
             }
         });
 
-        // Drop indexes from lease table
         Schema::table('lease', function (Blueprint $table) {
             if ($this->indexExists('lease', 'idx_lease_room')) {
                 $table->dropIndex('idx_lease_room');
@@ -101,14 +97,12 @@ return new class extends Migration
             }
         });
 
-        // Drop index from lease_tenant table
         Schema::table('lease_tenant', function (Blueprint $table) {
             if ($this->indexExists('lease_tenant', 'idx_lt_tenant')) {
                 $table->dropIndex('idx_lt_tenant');
             }
         });
 
-        // Drop indexes from payment_record table
         Schema::table('payment_record', function (Blueprint $table) {
             if ($this->indexExists('payment_record', 'idx_pr_lease')) {
                 $table->dropIndex('idx_pr_lease');
@@ -121,14 +115,12 @@ return new class extends Migration
             }
         });
 
-        // Drop index from notification table
         Schema::table('notification', function (Blueprint $table) {
             if ($this->indexExists('notification', 'idx_notif_landlord_read')) {
                 $table->dropIndex('idx_notif_landlord_read');
             }
         });
 
-        // Drop index from audit_log table
         Schema::table('audit_log', function (Blueprint $table) {
             if ($this->indexExists('audit_log', 'idx_audit_landlord_time')) {
                 $table->dropIndex('idx_audit_landlord_time');
@@ -139,18 +131,8 @@ return new class extends Migration
     /**
      * Helper function to check if index exists
      */
-    private function indexExists($table, $indexName): bool
+    protected function indexExists($table, $indexName)
     {
-        try {
-            $indexes = DB::select("SHOW INDEX FROM {$table}");
-            foreach ($indexes as $index) {
-                if ($index->Key_name === $indexName) {
-                    return true;
-                }
-            }
-        } catch (\Exception $e) {
-            return false;
-        }
-        return false;
+        return \Illuminate\Support\Facades\Schema::hasIndex($table, $indexName);
     }
 };

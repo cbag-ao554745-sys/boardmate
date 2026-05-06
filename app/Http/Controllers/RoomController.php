@@ -88,7 +88,7 @@ class RoomController extends Controller
                     fn($tenant) => [
                         'tenant_id' => $tenant->tenant_id,
                         'name' => trim("{$tenant->person->first_name} {$tenant->person->last_name}"),
-                        'is_primary' => (bool) $tenant->is_primary,
+                        'is_primary' => (bool) ($tenant->pivot->is_primary_tenant ?? false),
                     ],
                 )
                 ->values()

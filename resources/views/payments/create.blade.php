@@ -378,12 +378,14 @@
             const leaseId = this.value;
             const tenantSelect = document.getElementById('tenant_id');
             const rentInput = document.getElementById('rent_amount');
+            const dueDateInput = document.getElementById('bills_due_date');
 
             tenantSelect.innerHTML = '';
 
             if (!leaseId) {
                 tenantSelect.innerHTML = '<option value="">Select a lease first</option>';
                 rentInput.value = 0;
+                dueDateInput.value = '';
                 updateTotal();
                 return;
             }
@@ -399,6 +401,27 @@
                     tenantSelect.appendChild(opt);
                 });
                 rentInput.value = lease.monthly_rent;
+                
+                // Calculate bills due date
+                const today = new Date();
+                const currentYear = today.getFullYear();
+                const currentMonth = today.getMonth(); // 0-11
+                const dueDay = lease.payment_due_day;
+                
+                // Create date with payment_due_day in current month
+                let dueDate = new Date(currentYear, currentMonth, dueDay);
+                
+                // If the due date has already passed this month, use next month's due date
+                if (dueDate < today) {
+                    dueDate = new Date(currentYear, currentMonth + 1, dueDay);
+                }
+                
+                // Format as YYYY-MM-DD for input[type="date"]
+                const year = dueDate.getFullYear();
+                const month = String(dueDate.getMonth() + 1).padStart(2, '0');
+                const day = String(dueDate.getDate()).padStart(2, '0');
+                dueDateInput.value = `${year}-${month}-${day}`;
+                
                 updateTotal();
             }
         });

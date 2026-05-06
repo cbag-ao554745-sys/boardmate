@@ -117,7 +117,7 @@
                             @foreach ($rooms as $room)
                                 <tr class="hover:bg-muted transition-colors">
                                     <td class="text-foreground px-6 py-4 text-sm font-medium">
-                                        {{ $room['room_number'] }}
+                                        Room {{ $room['room_number'] }}
                                     </td>
 
                                     <td class="text-muted-foreground px-6 py-4 text-sm">

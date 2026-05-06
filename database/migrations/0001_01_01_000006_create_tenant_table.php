@@ -18,6 +18,7 @@ return new class extends Migration
             $table->unsignedInteger('landlord_id');
             $table->enum('status', ['Active', 'Inactive', 'Blacklisted'])->default('Active');
             $table->timestamps();
+            $table->softDeletes();
 
             $table->unique('person_id');
             $table->foreign('person_id')

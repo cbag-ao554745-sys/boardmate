@@ -23,6 +23,7 @@ return new class extends Migration
             $table->unsignedTinyInteger('payment_due_day')->default(1);
             $table->enum('status', ['Active', 'Completed', 'Terminated'])->default('Active');
             $table->timestamps();
+            $table->softDeletes();
 
             $table->foreign('room_id')
                 ->references('room_id')

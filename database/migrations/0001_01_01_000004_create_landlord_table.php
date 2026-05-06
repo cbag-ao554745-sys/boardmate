@@ -13,12 +13,17 @@ return new class extends Migration
     {
         Schema::create('landlord', function (Blueprint $table) {
             $table->unsignedInteger('landlord_id')->primary()->autoIncrement();
+            $table->unsignedBigInteger('user_id');
             $table->unsignedInteger('person_id');
-            $table->string('username', 50)->unique();
-            $table->string('password_hash', 255);
             $table->timestamps();
 
+            $table->unique('user_id');
             $table->unique('person_id');
+            $table->foreign('user_id')
+                ->references('id')
+                ->on('users')
+                ->onUpdate('cascade')
+                ->onDelete('restrict');
             $table->foreign('person_id')
                 ->references('person_id')
                 ->on('person')

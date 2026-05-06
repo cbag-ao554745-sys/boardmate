@@ -28,7 +28,7 @@ class PaymentRecordController extends Controller
         $query = PaymentRecord::whereIn('lease_id', function ($q) use ($landlord) {
             $q->select('lease_id')->from('lease')->where('landlord_id', $landlord->landlord_id);
         })
-            ->with(['lease.room', 'lease.tenants.person'])
+            ->with(['lease.room', 'lease.tenants.person', 'paymentMethod'])
             ->orderByDesc('bills_due_date');
 
         if (request('month')) {
@@ -56,7 +56,7 @@ class PaymentRecordController extends Controller
                 'total_amount' => (float) $payment->total_amount,
                 'amount_paid' => (float) $payment->amount_paid,
                 'balance' => (float) $payment->balance,
-                'payment_method' => $payment->payment_method,
+                'payment_method' => $payment->paymentMethod?->name ?? 'N/A',
                 'status' => $payment->status,
                 'bills_due_date' => $payment->bills_due_date?->format('M d, Y'),
                 'date_paid' => $payment->date_paid?->format('M d, Y'),
@@ -82,6 +82,7 @@ class PaymentRecordController extends Controller
                     'room_number' => $lease->room->room_number,
                     'tenant_names' => $lease->tenants->map(fn($t) => trim("{$t->person->first_name} {$t->person->last_name}"))->join(', '),
                     'monthly_rent' => (float) $lease->monthly_rent,
+                    'payment_due_day' => (int) $lease->payment_due_day,
                     'tenants' => $lease->tenants
                         ->map(
                             fn($t) => [
@@ -96,8 +97,7 @@ class PaymentRecordController extends Controller
             })
             ->toArray();
 
-        // Get active payment methods from database
-        $paymentMethods = PaymentMethod::where('is_active', true)->get();
+        $paymentMethods = PaymentMethod::active()->get();
 
         return view('payments.create', compact('leases', 'paymentMethods'));
     }
@@ -115,13 +115,14 @@ class PaymentRecordController extends Controller
         $amountPaid = (float) ($request->amount_paid ?? 0);
         $balance = $totalAmount - $amountPaid;
 
-        $status = 'Pending';
-        if ($amountPaid >= $totalAmount && $totalAmount > 0) {
-            $status = 'Paid';
-        } elseif ($amountPaid > 0 && $amountPaid < $totalAmount) {
-            $status = 'Partial';
+        // Convert payment method name to ID
+        $paymentMethodId = null;
+        if ($request->payment_method) {
+            $paymentMethod = PaymentMethod::where('name', $request->payment_method)->first();
+            $paymentMethodId = $paymentMethod?->payment_method_id;
         }
 
+        // Status is automatically computed by database trigger trg_recompute_payment_status_*
         $payment = PaymentRecord::create([
             'lease_id' => $request->lease_id,
             'tenant_id' => $request->tenant_id,
@@ -132,19 +133,20 @@ class PaymentRecordController extends Controller
             'total_amount' => $totalAmount,
             'amount_paid' => $amountPaid,
             'balance' => $balance,
-            'payment_method' => $request->payment_method ?? 'Cash',
+            'payment_method_id' => $paymentMethodId,
             'payment_reference' => $request->payment_reference,
             'bills_due_date' => $request->bills_due_date,
             'date_paid' => $request->date_paid ?: null,
-            'status' => $status,
         ]);
+
+        $payment->refresh();
 
         AuditLog::create([
             'landlord_id' => $landlord->landlord_id,
             'action' => AuditLog::ACTION_INSERT,
             'table_name' => 'payment_record',
             'record_id' => $payment->payment_id,
-            'description' => "Payment record created for lease #{$request->lease_id}. Amount paid: {$amountPaid}. Status: {$status}.",
+            'description' => "Payment record created for lease #{$request->lease_id}. Amount paid: {$amountPaid}. Status: {$payment->status}.",
         ]);
 
         return redirect()->route('payments.index')->with('success', 'Payment recorded successfully.');
@@ -152,7 +154,7 @@ class PaymentRecordController extends Controller
 
     public function show(PaymentRecord $payment)
     {
-        $payment->load('lease.room', 'lease.tenants.person', 'tenant.person');
+        $payment->load('lease.room', 'lease.tenants.person', 'tenant.person', 'paymentMethod');
 
         return view('payments.show', [
             'payment' => $payment,
@@ -162,10 +164,9 @@ class PaymentRecordController extends Controller
 
     public function edit(PaymentRecord $payment)
     {
-        $payment->load('lease.room', 'tenant.person');
+        $payment->load('lease.room', 'tenant.person', 'paymentMethod');
 
-        // Get active payment methods from database
-        $paymentMethods = PaymentMethod::where('is_active', true)->get();
+        $paymentMethods = PaymentMethod::active()->get();
 
         return view('payments.edit', compact('payment', 'paymentMethods'));
     }
@@ -183,13 +184,14 @@ class PaymentRecordController extends Controller
         $amountPaid = (float) ($request->amount_paid ?? 0);
         $balance = $totalAmount - $amountPaid;
 
-        $status = 'Pending';
-        if ($amountPaid >= $totalAmount && $totalAmount > 0) {
-            $status = 'Paid';
-        } elseif ($amountPaid > 0 && $amountPaid < $totalAmount) {
-            $status = 'Partial';
+        // Convert payment method name to ID
+        $paymentMethodId = null;
+        if ($request->payment_method) {
+            $paymentMethod = PaymentMethod::where('name', $request->payment_method)->first();
+            $paymentMethodId = $paymentMethod?->payment_method_id;
         }
 
+        // Status is automatically recomputed by database trigger trg_recompute_payment_status_*
         $payment->update([
             'rent_amount' => $rentAmount,
             'electricity_amount' => $electricityAmount,
@@ -198,19 +200,20 @@ class PaymentRecordController extends Controller
             'total_amount' => $totalAmount,
             'amount_paid' => $amountPaid,
             'balance' => $balance,
-            'payment_method' => $amountPaid > 0 ? $request->payment_method : null,
+            'payment_method_id' => $paymentMethodId,
             'payment_reference' => $amountPaid > 0 ? $request->payment_reference : null,
             'date_paid' => $amountPaid > 0 ? $request->date_paid : null,
             'bills_due_date' => $request->bills_due_date,
-            'status' => $status,
         ]);
+
+        $payment->refresh();
 
         AuditLog::create([
             'landlord_id' => $landlord->landlord_id,
             'action' => AuditLog::ACTION_UPDATE,
             'table_name' => 'payment_record',
             'record_id' => $payment->payment_id,
-            'description' => "Payment record #{$payment->payment_id} updated. Status changed to: {$status}.",
+            'description' => "Payment record #{$payment->payment_id} updated. Status changed to: {$payment->status}.",
         ]);
 
         return redirect()->route('payments.index')->with('success', 'Payment updated successfully.');
